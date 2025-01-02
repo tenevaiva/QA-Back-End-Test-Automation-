@@ -1,0 +1,38 @@
+[Test]
+        public void Test_DeleteDestination()
+        {
+            //Arrange
+            //Get all destinations and extract the one with name "Yellowstone National Park"
+            var getRequest = new RestRequest("destination", Method.Get);
+            var getResponse = client.Execute(getRequest);
+
+            Assert.That(getResponse.StatusCode, Is.EqualTo(HttpStatusCode.OK), "Response status code is not as expected");
+            Assert.That(getResponse.Content, Is.Not.Null.Or.Empty, "Response content is not as expected");
+
+            var destination = JArray.Parse(getResponse.Content);
+            var destinationToDelete = destination.FirstOrDefault(d => d["name"]?.ToString() == "Yellowstone National Park");
+
+            Assert.That(destinationToDelete, Is.Not.Null);
+
+            var destinationId = destinationToDelete["_id"]?.ToString();
+
+            //Create delete request
+            var deleteRequest = new RestRequest($"destination/{destinationId}", Method.Delete);
+            deleteRequest.AddHeader("Authorization", $"Bearer {token}");
+
+            //Act
+            var deleteResponse = client.Execute(deleteRequest);
+
+            //Assert
+            Assert.Multiple(() =>
+            {
+                Assert.That(deleteResponse.StatusCode, Is.EqualTo(HttpStatusCode.OK);
+            });
+
+            //Get request to get the destinaton that we deleted
+            var verifyRequest = new RestRequest($"destination/{destinationId}");
+
+            var verifyResponse = client.Execute(verifyRequest);
+
+            Assert.That(verifyResponse.Content, Is.EqualTo("null"));
+        }
