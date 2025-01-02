@@ -1,0 +1,42 @@
+[Test]
+public void Test_UpdateDestination()
+{
+    //Arrange
+    //Get all destinations and extract the one with name "Machu Picchu"
+    var getRequest = new RestRequest("destination", Method.Get);
+    var getResponse = client.Execute(getRequest);
+
+    Assert.That(getResponse.StatusCode, Is.EqualTo(HttpStatusCode.OK), "Response status code is not as expected");
+    Assert.That(getResponse.Content, Is.Not.Null.Or.Empty, "Response content is not as expected");
+
+    var destination = JArray.Parse(getResponse.Content);
+    var destinationToUpdate = destination.FirstOrDefault(d => d["name"]?.ToString() == "Machu Picchu");
+
+    Assert.That(destinationToUpdate, Is.Not.Null);
+
+    var destinationId = destinationToUpdate["_id"]?.ToString();
+
+    //Create update request
+    var updateRequest = new RestRequest($"destination/{destinationId}", Method.Put);
+    updateRequest.AddHeader("Authorization", $"Bearer {token}");
+    updateRequest.AddJsonBody(new
+    {
+        name = "UpdatedName",
+        bestTimeToVisit = "Winter"
+    });
+
+    //Act
+    var updateResponse = client.Execute(updateRequest);
+
+    //Assert
+    Assert.Multiple(() =>
+    {
+        Assert.That(updateResponse.StatusCode, Is.EqualTo(HttpStatusCode.OK), "Response status code is not as expected");
+        Assert.That(updateResponse.Content, Is.Not.Null.Or.Empty, "Response content is not as expected");
+
+        var updatedDestination = JObject.Parse(updateResponse.Content);
+
+        Assert.That(updatedDestination["name"]?.ToString(), Is.EqualTo("UpdatedName"));
+        Assert.That(updatedDestination["bestTimeToVisit"]?.ToString(), Is.EqualTo("Winter"));
+    });
+}
