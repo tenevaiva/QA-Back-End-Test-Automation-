@@ -1,0 +1,22 @@
+[Test]
+public void Test_GetDestinationByName()
+{
+    //Arrange
+    var getRequest = new RestRequest("destination", Method.Get);
+
+    //Act
+    var getResponse = client.Execute(getRequest);
+
+    //Assert
+    Assert.Multiple(() =>
+    {
+        Assert.That(getResponse.StatusCode, Is.EqualTo(HttpStatusCode.OK), "Response status code is not as expected");
+        Assert.That(getResponse.Content, Is.Not.Null.Or.Empty, "Response content is not as expected");
+
+        var destinations = JArray.Parse(getResponse.Content);
+        var destination = destinations.FirstOrDefault(d => d["name"]?.ToString() == "New York City");
+
+        Assert.That(destination["location"]?.ToString(), Is.EqualTo("New York, USA"), "Location property does not have the correct value");
+        Assert.That(destination["description"]?.ToString(), Is.EqualTo("The largest city in the USA, known for its skyscrapers, culture, and entertainment."), "Destination property does not have the correct value");
+    });
+}
