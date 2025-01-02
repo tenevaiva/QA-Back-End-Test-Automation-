@@ -1,0 +1,30 @@
+[Test]
+ public void Test_GetAllDestinations()
+ {
+     // Arrange
+     var getRequest = new RestRequest("destination", Method.Get);
+
+     // Act
+     var getResponse = client.Execute(getRequest);
+
+     // Assert
+     Assert.Multiple(() =>
+     {
+         Assert.That(getResponse.StatusCode, Is.EqualTo(HttpStatusCode.OK), "Expected status code is not OK");
+         Assert.That(getResponse.Content, Is.Not.Null.Or.Empty, "Response content is null or empty");
+
+         var destinations = JArray.Parse(getResponse.Content);
+
+         Assert.That(destinations.Type, Is.EqualTo(JTokenType.Array), "The response content is not JSON Array");
+         Assert.That(destinations.Count, Is.GreaterThan(0), "There should be at least one destination");
+
+         foreach (var dest in destinations)
+         {
+             Assert.That(dest["name"]?.ToString(), Is.Not.Null.Or.Empty, "Property name is not as expected");
+             Assert.That(dest["location"]?.ToString(), Is.Not.Null.Or.Empty, "Property location is not as expected");
+             Assert.That(dest["description"]?.ToString(), Is.Not.Null.Or.Empty, "Property description is not as expected");
+             Assert.That(dest["category"]?.ToString(), Is.Not.Null.Or.Empty, "Property category is not as expected");
+             Assert.That(dest["attractions"]?.Type, Is.EqualTo(JTokenType.Array), "Attractions property is not an array");
+             Assert.That(dest["bestTimeToVisit"]?.ToString(), Is.Not.Null.Or.Empty, "Property bestTimeToVisit is not as expected");
+         }
+     });
