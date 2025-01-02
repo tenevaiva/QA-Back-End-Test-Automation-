@@ -1,0 +1,74 @@
+[Test]
+public void Test_AddDestination()
+{
+    //Arrange
+    //Get all categories and extract the first one id
+    var getCategoriesRequest = new RestRequest("category", Method.Get);
+
+    var getCategoriesResponse = client.Execute(getCategoriesRequest);
+
+    var categories = JArray.Parse(getCategoriesResponse.Content);
+    var firstCategory = categories.First();
+    var categoryId = firstCategory["_id"]?.ToString();
+
+    //Create new destination
+    var addRequest = new RestRequest("destination", Method.Post);
+    addRequest.AddHeader("Authorization", $"Bearer { token }");
+    var name = "Random Name";
+    var location = "New Location";
+    var description = "New Description";
+    var bestTimeToVisit = "April";
+    var attractions = new[] { "Attraction1", "Attraction2", "Attraction3"};
+
+    addRequest.AddJsonBody(new
+    {
+        name,
+        location,
+        description,
+        bestTimeToVisit,
+        attractions,
+        category = categoryId
+    });
+
+    //Act
+    var addResponse = client.Execute(addRequest);
+
+    //Assert
+    Assert.Multiple(() =>
+    {
+        Assert.That(addResponse.StatusCode, Is.EqualTo(HttpStatusCode.OK), "Response code is not as expected");
+        Assert.That(addResponse.Content, Is.Not.Null.Or.Empty, "Response content is not as expected");
+    }); 
+
+    var createdDestination = JObject.Parse(addResponse.Content);
+    Assert.That(createdDestination["_id"]?.ToString(), Is.Not.Empty);
+
+    var createdDestinationId = createdDestination["_id"]?.ToString();
+
+    //Get destination by Id
+    var getDestinationRequest = new RestRequest($"/destination/{createdDestinationId}", Method.Get);
+
+    var getResponse = client.Execute(getDestinationRequest);
+
+    Assert.Multiple(() =>
+    {
+        Assert.That(getResponse.StatusCode, Is.EqualTo(HttpStatusCode.OK), "Response code is not as expected");
+        Assert.That(getResponse.Content, Is.Not.Null.Or.Empty, "Response content is not as expected");
+
+        var destination = JObject.Parse(getResponse.Content);
+
+        Assert.That(destination["name"]?.ToString(), Is.EqualTo(name));
+        Assert.That(destination["location"]?.ToString(), Is.EqualTo(location));
+        Assert.That(destination["description"]?.ToString(), Is.EqualTo(description));
+        Assert.That(destination["bestTimeToVisit"]?.ToString(), Is.EqualTo(bestTimeToVisit));
+
+        Assert.That(destination["category"]?.ToString(), Is.Not.Null.Or.Empty);
+        Assert.That(destination["category"]["_id"]?.ToString(), Is.EqualTo(categoryId));
+
+        Assert.That(destination["attractions"].Count, Is.EqualTo(3));
+        Assert.That(destination["attractions"].Type, Is.EqualTo(JTokenType.Array));
+        Assert.That(destination["attractions"][0]?.ToString(), Is.EqualTo("Attraction1"));
+        Assert.That(destination["attractions"][1]?.ToString(), Is.EqualTo("Attraction2"));
+        Assert.That(destination["attractions"][2]?.ToString(), Is.EqualTo("Attraction3"));
+    });
+}
