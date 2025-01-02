@@ -1,0 +1,125 @@
+using Newtonsoft.Json.Linq;
+using RestSharp;
+using System.Net;
+
+namespace ApiTests
+{
+    [TestFixture]
+    public class CategoryTests : IDisposable
+    {
+        private RestClient client;
+        private string token;
+
+        [SetUp]
+        public void Setup()
+        {
+            client = new RestClient(GlobalConstants.BaseUrl);
+            token = GlobalConstants.AuthenticateUser("john.doe@example.com", "password123");
+
+            Assert.That(token, Is.Not.Null.Or.Empty, "Authentication token should not be null or empty");
+        }
+
+        [Test]
+        public void Test_CategoryLifecycle()
+        {
+            // Step 1: Create a new category
+            var createCategoryRequest = new RestRequest("/category", Method.Post);
+            createCategoryRequest.AddHeader("Authorization", $"Bearer {token}");
+            createCategoryRequest.AddJsonBody(new
+            {
+                name = "Test Category"
+            });
+            
+            var createResponse = client.Execute(createCategoryRequest);
+
+            Assert.That(createResponse.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+
+            var createdCategory = JObject.Parse(createResponse.Content);
+            var categoryId = createdCategory["_id"]?.ToString();
+
+            Assert.That(categoryId, Is.Not.Null.Or.Empty);
+
+            // Step 2: Get all categories
+            var getAllCategories = new RestRequest("category", Method.Get);
+
+            var getAllCategoriesResponse = client.Execute(getAllCategories);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(getAllCategoriesResponse.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+                Assert.That(getAllCategoriesResponse.Content, Is.Not.Empty);
+
+                var categories = JArray.Parse(getAllCategoriesResponse.Content);
+
+                Assert.That(categories.Type, Is.EqualTo(JTokenType.Array));
+                Assert.That(categories.Count, Is.GreaterThan(0));
+
+                var createdCategory = categories.FirstOrDefault(c => c["name"]?.ToString() == "Test Category");
+
+                Assert.That(createdCategory, Is.Not.Null);
+
+            });
+
+            // Step 3: Get category by ID
+            var getCategoryById = new RestRequest($"category/{categoryId}", Method.Get);
+            var getCategoryByIdResponse = client.Execute(getCategoryById);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(getCategoryByIdResponse.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+                Assert.That(getCategoryByIdResponse.Content, Is.Not.Null.Or.Empty);
+
+                var category = JObject.Parse(getCategoryByIdResponse.Content);
+
+                Assert.That(category["_id"]?.ToString(), Is.EqualTo(categoryId));
+                Assert.That(category["name"]?.ToString(), Is.EqualTo("Test Category"));
+            });
+
+            // Step 4: Edit the category
+            var editRequest = new RestRequest($"category/{categoryId}", Method.Put);
+            editRequest.AddHeader("Authorization", $"Bearer {token}");
+            editRequest.AddJsonBody(new
+            {
+                name = "Updated Test Category"
+            });
+
+            var editResponse = client.Execute(editRequest);
+
+            Assert.That(editResponse.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+
+            // Step 5: Verify Edit
+            var getEdittedCategoryRequest = new RestRequest($"category/{categoryId}", Method.Get);
+            var getEdittedCategoryResponse = client.Execute(getEdittedCategoryRequest);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(getEdittedCategoryResponse.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+                Assert.That(getEdittedCategoryResponse.Content, Is.Not.Empty);
+
+                var updatedCategoryGet = JObject.Parse(getEdittedCategoryResponse.Content); ;
+
+                Assert.That(updatedCategoryGet["name"]?.ToString(), Is.EqualTo("Updated Test Category"));
+            });
+
+            // Step 6: Delete the category
+            var deleteCategory = new RestRequest($"category/{categoryId}", Method.Delete);
+            deleteCategory.AddHeader("Authorization", $"Bearer {token}");
+
+            var deleteResponse = client.Execute(deleteCategory);
+
+            Assert.That(deleteResponse.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+
+
+            // Step 7: Verify that the deleted category cannot be found
+            var verifyDeleteRequest = new RestRequest($"category/{categoryId}", Method.Get);
+            var verifyResponse = client.Execute(verifyDeleteRequest);
+
+            Assert.That(verifyResponse.StatusCode, Is.EqualTo(HttpStatusCode.NotFound));
+        }
+
+        public void Dispose()
+        {
+            client?.Dispose();
+        }
+    }
+}
